@@ -1,0 +1,13 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{32342220-4CF5-28A3-94A2-809C98609784}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "Shader_Test",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		}
+	]
+}
