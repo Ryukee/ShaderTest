@@ -10,10 +10,11 @@
 #include "SceneUtils.h"  
 #include "SceneInterface.h"  
 #include "ShaderParameterUtils.h"  
+#include "Kismet/KismetSystemLibrary.h"
 
 
 #define LOCTEXT_NAMESPACE "TestShader"  
- 
+
 UTestShaderBlueprintLibrary::UTestShaderBlueprintLibrary(const FObjectInitializer& ObjectInitializer)  
     : Super(ObjectInitializer)  
 {  
@@ -21,7 +22,8 @@ UTestShaderBlueprintLibrary::UTestShaderBlueprintLibrary(const FObjectInitialize
 }  
  
 class FMyShaderTest : public FGlobalShader  
-{  
+{
+    DECLARE_INLINE_TYPE_LAYOUT(FMyShaderTest, NonVirtual);
 public:  
  
     FMyShaderTest(){}  
@@ -66,7 +68,7 @@ public:
  
 private:  
  
-    FShaderParameter SimpleColorVal;  
+    LAYOUT_FIELD(FShaderParameter, SimpleColorVal);
  
 };  
  
@@ -121,68 +123,41 @@ static void DrawTestShaderRenderTarget_RenderThread(
 #endif  
  
     //设置渲染目标  
-    /*todo: SetRenderTarget(  
-        RHICmdList,  
-        OutputRenderTargetResource->GetRenderTargetTexture(),  
-        FTextureRHIRef(),  
-        ESimpleRenderTargetMode::EUninitializedColorAndDepth,  
-        FExclusiveDepthStencil::DepthNop_StencilNop  
-    ); */
- 
-    //设置视口  
-    //FIntPoint DrawTargetResolution(OutputRenderTargetResource->GetSizeX(), OutputRenderTargetResource->GetSizeY());  
-    //RHICmdList.SetViewport(0, 0, 0.0f, DrawTargetResolution.X, DrawTargetResolution.Y, 1.0f);  
- 
-    FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(FeatureLevel);  
-    TShaderMapRef<FShaderTestVS> VertexShader(GlobalShaderMap);  
-    TShaderMapRef<FShaderTestPS> PixelShader(GlobalShaderMap);  
- 
-    // Set the graphic pipeline state.  
-    FGraphicsPipelineStateInitializer GraphicsPSOInit;  
-    RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);  
-    GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();  
-    GraphicsPSOInit.BlendState = TStaticBlendState<>::GetRHI();  
-    GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();  
-    GraphicsPSOInit.PrimitiveType = PT_TriangleList;  
-    GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GetVertexDeclarationFVector4();  
-    GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
-    GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader(); 
-    SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);  
- 
-    //RHICmdList.SetViewport(0, 0, 0.0f, DrawTargetResolution.X, DrawTargetResolution.Y, 1.0f);  
-    PixelShader->SetParameters(RHICmdList, MyColor);  
- 
-    // Draw grid.  
-    //uint32 PrimitiveCount = 2;  
-    //RHICmdList.DrawPrimitive(PT_TriangleList, 0, PrimitiveCount, 1);  
-    FVector4 Vertices[4];  
-    Vertices[0].Set(-1.0f, 1.0f, 0, 1.0f);  
-    Vertices[1].Set(1.0f, 1.0f, 0, 1.0f);  
-    Vertices[2].Set(-1.0f, -1.0f, 0, 1.0f);  
-    Vertices[3].Set(1.0f, -1.0f, 0, 1.0f);  
-    static const uint16 Indices[6] =  
-    {  
-        0, 1, 2,  
-        2, 1, 3  
-    };  
-    //DrawPrimitiveUP(RHICmdList, PT_TriangleStrip, 2, Vertices, sizeof(Vertices[0]));  
-    DrawIndexedPrimitiveUP(  
-        RHICmdList,  
-        PT_TriangleList,  
-        0,  
-        ARRAY_COUNT(Vertices),  
-        2,  
-        Indices,  
-        sizeof(Indices[0]),  
-        Vertices,  
-        sizeof(Vertices[0])  
-    );  
- 
-    // Resolve render target.  
-    RHICmdList.CopyToResolveTarget(  
-        OutputRenderTargetResource->GetRenderTargetTexture(),  
-        OutputRenderTargetResource->TextureRHI,  
-        FResolveParams());  
+    FRHITexture2D* RenderTargetTexture = OutputRenderTargetResource->GetRenderTargetTexture();
+    RHICmdList.Transition(FRHITransitionInfo(RenderTargetTexture, ERHIAccess::SRVMask, ERHIAccess::RTV));
+    FRHIRenderPassInfo RPInfo(RenderTargetTexture, ERenderTargetActions::DontLoad_Store);
+    RHICmdList.BeginRenderPass(RPInfo, TEXT("DrawUVDisplacement"));
+    {
+
+        FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(FeatureLevel);
+        TShaderMapRef<FShaderTestVS> VertexShader(GlobalShaderMap);
+        TShaderMapRef<FShaderTestPS> PixelShader(GlobalShaderMap);
+
+        // Set the graphic pipeline state.  
+        FGraphicsPipelineStateInitializer GraphicsPSOInit;
+        RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+        GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+        GraphicsPSOInit.BlendState = TStaticBlendState<>::GetRHI();
+        GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();
+        GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+        GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GetVertexDeclarationFVector4();
+        GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+        GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+        SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
+
+        // Update viewport.
+        RHICmdList.SetViewport(
+            0, 0, 0.f,
+            OutputRenderTargetResource->GetSizeX(), OutputRenderTargetResource->GetSizeY(), 1.f);
+        PixelShader->SetParameters(RHICmdList, MyColor);
+
+
+        RHICmdList.SetStreamSource(0, GScreenSpaceVertexBuffer.VertexBufferRHI, 0);
+        RHICmdList.DrawIndexedPrimitive(GTwoTrianglesIndexBuffer.IndexBufferRHI, 0, 0, 4, 0, 2, 1);
+    }
+
+    RHICmdList.EndRenderPass();
+    RHICmdList.Transition(FRHITransitionInfo(RenderTargetTexture, ERHIAccess::RTV, ERHIAccess::SRVMask));
 }  
  
 void UTestShaderBlueprintLibrary::DrawTestShaderRenderTarget(  
@@ -190,7 +165,9 @@ void UTestShaderBlueprintLibrary::DrawTestShaderRenderTarget(
     AActor* Ac,  
     FLinearColor MyColor  
 )  
-{  
+{
+    UKismetSystemLibrary::PrintString(nullptr, TEXT("hgy ----- 1", true, true, FLinearColor()));
+    // FPlatformMisc::LowLevelOutputDebugStringf(TEXT("hgy ----- 1 "));
     check(IsInGameThread());  
  
     if (!OutputRenderTarget)  
