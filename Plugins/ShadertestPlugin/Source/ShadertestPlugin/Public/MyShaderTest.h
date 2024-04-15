@@ -1,15 +1,15 @@
 #pragma once
-
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "UObject/ObjectMacros.h"
 #include "MyShaderTest.generated.h"
 
-UCLASS(MinimalAPI, meta = (ScriptName = "TestShaderLibrary"))
+UCLASS(MinimalAPI)
 class UTestShaderBlueprintLibrary : public UBlueprintFunctionLibrary
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
-	UFUNCTION(BlueprintCallable, Category = "ShaderTestPlugin", meta = (WorldContext = "WorldContextObject"))
-	static void DrawTestShaderRenderTarget(class UTextureRenderTarget2D* OutputRenderTarget, AActor* Ac, FLinearColor MyColor);
+	UFUNCTION(BlueprintCallable, Category = "ShaderTestPlugin", meta = (WorldContext = "WorldContexObject"))
+	static void DrawTestShaderRenderTarget(const UObject* WorldContextObject,
+	                                       class UTextureRenderTarget2D* OutputRenderTarget, FLinearColor MyColor,
+	                                       UTexture2D* MyTexture);
 };
