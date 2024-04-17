@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:android="http://schemas.openharmony.com">
+
+
+    <resourceCopies>
+        <copyFile src="$S(PluginDir)/../../Binaries/OpenHarmony/$S(Architecture)/libfmod.so"
+                  dst="$S(BuildDir)/entry/libs/$S(Architecture)/libfmod.so" />
+        <copyFile src="$S(PluginDir)/../../Binaries/OpenHarmony/$S(Architecture)/libfmodstudio.so"
+                  dst="$S(BuildDir)/entry/libs/$S(Architecture)/libfmodstudio.so" />
+    </resourceCopies>
+
+    <entryAbilityImportAdditions>
+        <insert>
+            import fmod from 'libfmod.so';
+        </insert>
+    </entryAbilityImportAdditions>
+
+    <entryAbilityWindowStageActiveAdditions>
+        <insert>
+            fmod.fmodInit(this);
+        </insert>
+    </entryAbilityWindowStageActiveAdditions>
+
+    <entryAbilityWindowStageInactiveAdditions>
+        <insert>
+            fmod.fmodClose();
+        </insert>
+    </entryAbilityWindowStageInactiveAdditions>
+    
+</root>

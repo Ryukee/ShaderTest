@@ -8,9 +8,6 @@
 #include "SceneUtils.h"
 #include "SceneInterface.h"
 #include "ShaderParameterUtils.h"
-#include "Logging/MessageLog.h"
-#include "Internationalization/Internationalization.h"
-#include "StaticBoundShaderState.h"
 #include "RenderResource.h"
 #define LOCTEXT_NAMESPACE "TestShader"
 
@@ -18,14 +15,18 @@ class FMyShaderTest : public FGlobalShader
 {
 	DECLARE_INLINE_TYPE_LAYOUT(FMyShaderTest, NonVirtual);
 
+private:
+	LAYOUT_FIELD(FShaderParameter, SimpleColorVal);
+	LAYOUT_FIELD(FShaderResourceParameter, MyTextureVal);
+	LAYOUT_FIELD(FShaderResourceParameter, MyTextureSamplerVal);
+	
 public:
-	FMyShaderTest()
-	{
-	}
+	FMyShaderTest() {}
 
 	FMyShaderTest(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
 		: FGlobalShader(Initializer)
 	{
+		// 把 shader类 的私有成员变量和 shader 中的变量绑定
 		SimpleColorVal.Bind(Initializer.ParameterMap, TEXT("SimpleColor"));
 		MyTextureVal.Bind(Initializer.ParameterMap, TEXT("MyTexture"));
 		MyTextureSamplerVal.Bind(Initializer.ParameterMap, TEXT("MyTextureSampler"));
@@ -42,60 +43,43 @@ public:
 		return true;
 	}
 
-	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
-	                                         FShaderCompilerEnvironment& OutEnvironment)
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 	{
+		// todo: ??? 把宏塞进shader里
 		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
 		//OutEnvironment.SetDefine(TEXT("TEST_MICRO"), 1);
 	}
 
-	void SetParameters(
-		FRHICommandListImmediate& RHICmdList,
-		const FLinearColor& MyColor,
-		FRHITexture2D* MyTexture2D
-	)
+	// todo: ??? 自定义函数, 设置shader的参数值
+	void SetParameters(FRHICommandListImmediate& RHICmdList, const FLinearColor& MyColor, FRHITexture2D* MyTexture2D)
 	{
 		SetShaderValue(RHICmdList, RHICmdList.GetBoundPixelShader(), SimpleColorVal, MyColor);
 		SetTextureParameter(RHICmdList, RHICmdList.GetBoundPixelShader(), MyTextureVal, MyTextureSamplerVal,
 		                    TStaticSamplerState<SF_Trilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), MyTexture2D);
 	}
 
-private:
-	LAYOUT_FIELD(FShaderParameter, SimpleColorVal);
-	LAYOUT_FIELD(FShaderResourceParameter, MyTextureVal);
-	LAYOUT_FIELD(FShaderResourceParameter, MyTextureSamplerVal);
+
 };
 
 class FShaderTestVS : public FMyShaderTest
 {
+	// 这个宏会帮我们把我们的shader加入到全局的shadermap中，是虚幻能识别到我们的shader然后编译它的关键。
+	// 这个宏做了很多事情，反正总的来说就是让虚幻知道了，哦！这里有个shader，我要编译它，我要用它来做渲染啥的
 	DECLARE_SHADER_TYPE(FShaderTestVS, Global);
-
 public:
-	FShaderTestVS()
-	{
-	}
-
-	FShaderTestVS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
-		: FMyShaderTest(Initializer)
-	{
-	}
+	FShaderTestVS() {}
+	FShaderTestVS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FMyShaderTest(Initializer) {}
 };
 
 class FShaderTestPS : public FMyShaderTest
 {
 	DECLARE_SHADER_TYPE(FShaderTestPS, Global);
-
 public:
-	FShaderTestPS()
-	{
-	}
-
-	FShaderTestPS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
-		: FMyShaderTest(Initializer)
-	{
-	}
+	FShaderTestPS() {}
+	FShaderTestPS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FMyShaderTest(Initializer) {}
 };
 
+// 这两个宏的作用就是把shader文件和我们shader类绑定起来，然后指认它是什么shader，shader对应的HLSL入口代码是哪里
 IMPLEMENT_SHADER_TYPE(, FShaderTestVS, TEXT("/ShadertestPlugin/MyShader.usf"), TEXT("MainVS"), SF_Vertex)
 IMPLEMENT_SHADER_TYPE(, FShaderTestPS, TEXT("/ShadertestPlugin/MyShader.usf"), TEXT("MainPS"), SF_Pixel)
 
@@ -125,6 +109,7 @@ public:
 	}
 };
 
+// 蓝图函数, 在RenderThread执行部分, 改变RT的颜色
 static void DrawTestShaderRenderTarget_RenderThread(
 	FRHICommandListImmediate& RHICmdList,
 	FTextureRenderTargetResource* OutputRenderTargetResource,
@@ -135,6 +120,7 @@ static void DrawTestShaderRenderTarget_RenderThread(
 )
 {
 	check(IsInRenderingThread());
+// 用于GPU调试
 #if WANTS_DRAW_MESH_EVENTS
 	FString EventName;
 	TextureRenderTargetName.ToString(EventName);
@@ -142,20 +128,21 @@ static void DrawTestShaderRenderTarget_RenderThread(
 #else
 	SCOPED_DRAW_EVENT(RHICmdList, DrawUVDisplacementToRenderTarget_RenderThread);
 #endif
+	
 	FRHITexture2D* RenderTargetTexture = OutputRenderTargetResource->GetRenderTargetTexture();
 	RHICmdList.Transition(FRHITransitionInfo(RenderTargetTexture, ERHIAccess::SRVMask, ERHIAccess::RTV));
 	FRHIRenderPassInfo RPInfo(RenderTargetTexture, ERenderTargetActions::Load_Store);
 	RHICmdList.BeginRenderPass(RPInfo, TEXT("DrawColorPass"));
 	{
 		// SetViewport
-		RHICmdList.SetViewport(
-			0, 0, 0.f,
+		RHICmdList.SetViewport(0, 0, 0.f,
 			OutputRenderTargetResource->GetSizeX(), OutputRenderTargetResource->GetSizeY(), 1.f);
 		FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(FeatureLevel);
 		TShaderMapRef<FShaderTestVS> VertexShader(GlobalShaderMap);
 		TShaderMapRef<FShaderTestPS> PixelShader(GlobalShaderMap);
 		FMyVertexDeclaration VertexDesc;
 		VertexDesc.InitRHI();
+		
 		// Set the graphic pipeline state.  
 		FGraphicsPipelineStateInitializer GraphicsPSOInit;
 		RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
@@ -168,8 +155,7 @@ static void DrawTestShaderRenderTarget_RenderThread(
 		GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
 		GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
 		SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
-
-
+		
 		PixelShader->SetParameters(RHICmdList, MyColor, MyRHITexture2D);
 
 		// Vertex Buffer Begins --------------------------
@@ -197,8 +183,7 @@ static void DrawTestShaderRenderTarget_RenderThread(
 		FMemory::Memcpy(VoidPtr, &v, sizeof(FMyVertex) * 4);
 		RHIUnlockVertexBuffer(MyVertexBufferRHI);
 		// Vertex Buffer Ends --------------------------
-
-
+		
 		// Index Buffer Begins--------------------
 		static const uint16 Indices[6] = {
 			0, 1, 2,
@@ -226,12 +211,9 @@ static void DrawTestShaderRenderTarget_RenderThread(
 	RHICmdList.Transition(FRHITransitionInfo(RenderTargetTexture, ERHIAccess::RTV, ERHIAccess::SRVMask));
 }
 
-void UTestShaderBlueprintLibrary::DrawTestShaderRenderTarget(
-	const UObject* WorldContextObject,
-	UTextureRenderTarget2D* OutputRenderTarget,
-	FLinearColor MyColor,
-	UTexture2D* MyTexture
-)
+// 蓝图函数, 改变RT的颜色
+void UTestShaderBlueprintLibrary::DrawTestShaderRenderTarget(const UObject* WorldContextObject, UTextureRenderTarget2D* OutputRenderTarget,
+																FLinearColor MyColor, UTexture2D* MyTexture)
 {
 	check(IsInGameThread());
 	if (!OutputRenderTarget)
@@ -239,21 +221,15 @@ void UTestShaderBlueprintLibrary::DrawTestShaderRenderTarget(
 		return;
 	}
 
-	FTextureRenderTargetResource* TextureRenderTargetResource = OutputRenderTarget->
-		GameThread_GetRenderTargetResource();
-
-	FRHITexture2D* MyRHITexture2D = MyTexture->TextureReference.TextureReferenceRHI->GetReferencedTexture()->
-	                                           GetTexture2D();
-
+	FTextureRenderTargetResource* TextureRenderTargetResource = OutputRenderTarget->GameThread_GetRenderTargetResource();
+	FRHITexture2D* MyRHITexture2D = MyTexture->TextureReference.TextureReferenceRHI->GetReferencedTexture()->GetTexture2D();
 	UWorld* World = WorldContextObject->GetWorld();
 	ERHIFeatureLevel::Type FeatureLevel = World->Scene->GetFeatureLevel();
 	FName TextureRenderTargetName = OutputRenderTarget->GetFName();
 	ENQUEUE_RENDER_COMMAND(CaptureCommand)(
-		[TextureRenderTargetResource, FeatureLevel, MyColor, TextureRenderTargetName,MyRHITexture2D](
-		FRHICommandListImmediate& RHICmdList)
+		[TextureRenderTargetResource, FeatureLevel, MyColor, TextureRenderTargetName, MyRHITexture2D] (FRHICommandListImmediate& RHICmdList)
 		{
-			DrawTestShaderRenderTarget_RenderThread(RHICmdList, TextureRenderTargetResource, FeatureLevel,
-			                                        TextureRenderTargetName, MyColor, MyRHITexture2D);
+			DrawTestShaderRenderTarget_RenderThread(RHICmdList, TextureRenderTargetResource, FeatureLevel, TextureRenderTargetName, MyColor, MyRHITexture2D);
 		}
 	);
 }
