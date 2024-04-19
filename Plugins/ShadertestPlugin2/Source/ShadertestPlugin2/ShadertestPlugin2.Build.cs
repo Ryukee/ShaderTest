@@ -23,6 +23,7 @@ public class ShadertestPlugin2 : ModuleRules
 				"Core",
 				"RenderCore",
 				"RHI",
+				"Projects"
 			}
 		);
 		PrivateDependencyModuleNames.AddRange(

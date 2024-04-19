@@ -122,34 +122,23 @@ class FLensDistortionUVGenerationVS : public FLensDistortionUVGenerationShader
 {
 	DECLARE_SHADER_TYPE(FLensDistortionUVGenerationVS, Global);
 public:
-
-	/** Default constructor. */
 	FLensDistortionUVGenerationVS() {}
-
 	/** Initialization constructor. */
-	FLensDistortionUVGenerationVS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
-		: FLensDistortionUVGenerationShader(Initializer)
-	{
-	}
+	FLensDistortionUVGenerationVS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FLensDistortionUVGenerationShader(Initializer) {}
 };
-
 
 class FLensDistortionUVGenerationPS : public FLensDistortionUVGenerationShader
 {
 	DECLARE_SHADER_TYPE(FLensDistortionUVGenerationPS, Global);
 public:
-
-	/** Default constructor. */
+	
 	FLensDistortionUVGenerationPS() {}
-
 	/** Initialization constructor. */
-	FLensDistortionUVGenerationPS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
-		: FLensDistortionUVGenerationShader(Initializer)
-	{ }
+	FLensDistortionUVGenerationPS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FLensDistortionUVGenerationShader(Initializer) {}
 };
 
-IMPLEMENT_SHADER_TYPE(, FLensDistortionUVGenerationVS, TEXT("/Plugin/Foo/Private/MyShader.usf"), TEXT("MainVS"), SF_Vertex)
-IMPLEMENT_SHADER_TYPE(, FLensDistortionUVGenerationPS, TEXT("/Plugin/Foo/Private/MyShader.usf"), TEXT("MainPS"), SF_Pixel)
+IMPLEMENT_SHADER_TYPE(, FLensDistortionUVGenerationVS, TEXT("/hgy/Private/MyShader.usf"), TEXT("MainVS"), SF_Vertex)
+IMPLEMENT_SHADER_TYPE(, FLensDistortionUVGenerationPS, TEXT("/hgy/Private/MyShader.usf"), TEXT("MainPS"), SF_Pixel)
 
 
 static void DrawUVDisplacementToRenderTarget_RenderThread(
